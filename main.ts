@@ -100,4 +100,25 @@ app.post("/login", async (c) => {
   return c.json({ token });
 });
 
+app.post("/signup", async (c) => {
+  const { email, password } = await c.req.json();
+
+  const existingUser = await getUserByEmail(email);
+  if (existingUser) {
+    c.status(400);
+    return c.json({ message: "User already exists" });
+  }
+  const hashedPassword = await bcrypt.hash(password, "10");
+
+  const result = await createUser(email, hashedPassword);
+  if (result) {
+    console.log("New user created:", result);
+    c.status(200);
+    return c.json({ message: "User created" });
+  } else {
+    c.status(500);
+    return c.json({ message: "Error signing up" });
+  }
+});
+
 Deno.serve(app.fetch);
