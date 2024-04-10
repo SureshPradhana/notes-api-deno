@@ -38,10 +38,8 @@ const key = await crypto.subtle.generateKey(
   true,
   ["sign", "verify"],
 );
-console.log(key);
 connectToDatabase();
 app.use("/api/*", async (c, next) => {
-  console.log(c.req);
   const token = c.req.header("authorization");
   if (!token) {
     c.status(401);
