@@ -1,43 +1,103 @@
-import { Hono } from "https://deno.land/x/hono@v3.4.1/mod.ts";
+import { Hono } from "https://deno.land/x/hono/mod.ts";
+import * as bcrypt from "https://deno.land/x/bcrypt/mod.ts";
+import { create } from "https://deno.land/x/djwt/mod.ts";
+import { load } from "https://deno.land/std@0.221.0/dotenv/mod.ts";
+import { cors } from "https://deno.land/x/hono/middleware.ts";
+import { verify } from "https://deno.land/x/djwt/mod.ts";
+import {
+  connectToDatabase,
+  createUser,
+  getUserByEmail,
+} from "./models/User.ts";
+
+import notes from "./routes/notes.ts";
+import note from "./routes/note.ts";
+import bytag from "./routes/bytag.ts";
+import bydate from "./routes/bydate.ts";
+import bycontent from "./routes/bycontent.ts";
+import byid from "./routes/byid.ts";
+
+import bybuckets from "./routes/bybuckets.ts";
+import bybucket from "./routes/bybucket.ts";
+import bybucketId from "./routes/bybucketId.ts";
+import bycards from "./routes/bycards.ts";
+import bycard from "./routes/bycard.ts";
+import bycardId from "./routes/bycardId.ts";
+import forgotPassword from "./routes/forgotPassword.ts";
+import resetPassword from "./routes/resetPassword.ts";
 
 const app = new Hono();
-const kv = await Deno.openKv();
+
+const env = await load();
+
+const PORT = env["PORT"] || 3000;
+const JWT_SECRET = env["JWT_SECRET"] || "default_secret_key";
+app.use(cors());
+const key = await crypto.subtle.generateKey(
+  { name: "HMAC", hash: "SHA-512" },
+  true,
+  ["sign", "verify"],
+);
+console.log(key);
+connectToDatabase();
+app.use("/api/*", async (c, next) => {
+  console.log(c.req);
+  const token = c.req.header("authorization");
+  if (!token) {
+    c.status(401);
+    return c.json({ message: "Unauthorized" });
+  }
+
+  const payload = await verify(token, key);
+
+  if (!payload) {
+    c.status(403);
+    return c.json({ message: "Forbidden" });
+  }
+  c.status(200);
+  c.user = payload;
+  await next();
+});
+
+app.route("/api/notes", notes);
+app.route("/", note);
+app.route("/api/bytag", bytag);
+app.route("/api/bydate", bydate);
+app.route("/api/bycontent", bycontent);
+app.route("/api/byid", byid);
+
+app.route("/api/bucketlist/bybuckets", bybuckets);
+app.route("/api/bucketlist/bybucket", bybucket);
+app.route("/api/bucketlist/bybucketId", bybucketId);
+
+app.route("/api/flashcards/bycards", bycards);
+app.route("/api/flashcards/bycard", bycard);
+app.route("/api/flashcards/bycardId", bycardId);
+
+app.route("/api/forgot-password", forgotPassword);
+app.route("/api/reset-password", resetPassword);
 
 // Redirect root URL
-app.get("/", (c) => c.redirect("/books"));
 
-// List all books
-app.get("/books", async (c) => {
-  const iter = await kv.list({ prefix: ["books"] });
-  const books = [];
-  for await (const res of iter) books.push(res);
+app.post("/login", async (c) => {
+  const { email, password } = await c.req.json();
+  const user = await getUserByEmail(email);
+  if (!user) {
+    c.status(404);
+    return c.json({ message: "User not found" });
+  }
 
-  return c.json(books);
+  const validPassword = await bcrypt.compare(password, user.password);
+  if (!validPassword) {
+    c.status(401);
+
+    return c.json({ message: "Invalid password" });
+  }
+
+  const token = await create({ alg: "HS512", typ: "JWT" }, {
+    user: { id: user._id, email: user.email },
+  }, key);
+  return c.json({ token });
 });
 
-// Create a book (POST body is JSON)
-app.post("/books", async (c) => {
-  const body = await c.req.json();
-  const result = await kv.set(["books", body.title], body);
-  return c.json(result);
-});
-
-// Get a book by title
-app.get("/books/:title", async (c) => {
-  const title = c.req.param("title");
-  const result = await kv.get(["books", title]);
-  return c.json(result);
-});
-
-// Delete a book by title
-app.delete("/books/:title", async (c) => {
-  const title = c.req.param("title");
-  await kv.delete(["books", title]);
-  return c.text("");
-});
-app.put("/books/:title", async (c) => {
-  const title = c.req.param("title");
-  const result = await kv.set(["books", title], await c.req.json());
-  return c.json(result);
-});
 Deno.serve(app.fetch);
