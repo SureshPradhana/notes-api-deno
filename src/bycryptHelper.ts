@@ -1,3 +1,5 @@
+// not used as worker is not working and in my case this also not working so will use sync
+// versions
 import {
   compare as comparePromise,
   compareSync,
@@ -8,7 +10,6 @@ import {
 } from "https://deno.land/x/bcrypt/mod.ts";
 
 export const isRunningInDenoDeploy = Deno.permissions?.query === undefined;
-
 // Adjusting to include salt generation in the helper
 export const generateSalt: typeof genSalt = isRunningInDenoDeploy
   ? (rounds: number = 10) => new Promise((res) => res(genSaltSync(rounds)))
