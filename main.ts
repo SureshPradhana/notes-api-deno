@@ -1,5 +1,5 @@
 import { Hono } from "https://deno.land/x/hono/mod.ts";
-import * as bcrypt from "https://deno.land/x/bcrypt/mod.ts";
+// import * as bcrypt from "https://deno.land/x/bcrypt/mod.ts";
 import { create } from "https://deno.land/x/djwt/mod.ts";
 import { load } from "https://deno.land/std@0.221.0/dotenv/mod.ts";
 import { cors } from "https://deno.land/x/hono/middleware.ts";
@@ -25,6 +25,8 @@ import bycard from "./routes/bycard.ts";
 import bycardId from "./routes/bycardId.ts";
 import forgotPassword from "./routes/forgotPassword.ts";
 import resetPassword from "./routes/resetPassword.ts";
+
+import { compare, generateSalt, hash } from "./src/bycryptHelper.ts";
 
 const app = new Hono();
 
@@ -85,7 +87,7 @@ app.post("/login", async (c) => {
     return c.json({ message: "User not found" });
   }
 
-  const validPassword = await bcrypt.compare(password, user.password);
+  const validPassword = await compare(password, user.password);
   if (!validPassword) {
     c.status(401);
 
@@ -106,7 +108,8 @@ app.post("/signup", async (c) => {
     c.status(400);
     return c.json({ message: "User already exists" });
   }
-  const hashedPassword = await bcrypt.hash(password, "10");
+  const salt = await generateSalt(10);
+  const hashedPassword = await hash(password, salt);
 
   const result = await createUser(email, hashedPassword);
   if (result) {
