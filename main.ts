@@ -1,6 +1,6 @@
 import { Hono } from "https://deno.land/x/hono/mod.ts";
 import * as bcrypt from "https://deno.land/x/bcrypt/mod.ts";
-import { create } from "https://deno.land/x/djwt/mod.ts";
+import { create, getNumericDate } from "https://deno.land/x/djwt/mod.ts";
 import { load } from "https://deno.land/std@0.221.0/dotenv/mod.ts";
 import { cors } from "https://deno.land/x/hono/middleware.ts";
 import { verify } from "https://deno.land/x/djwt/mod.ts";
@@ -96,6 +96,7 @@ app.post("/login", async (c) => {
 
   const token = await create({ alg: "HS512", typ: "JWT" }, {
     user: { id: user._id, email: user.email },
+    exp: getNumericDate(60 * 60 * 24),
   }, key);
   return c.json({ token });
 });
