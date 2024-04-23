@@ -25,22 +25,52 @@ import bycard from "./routes/bycard.ts";
 import bycardId from "./routes/bycardId.ts";
 import forgotPassword from "./routes/forgotPassword.ts";
 import resetPassword from "./routes/resetPassword.ts";
-
-import { compare, generateSalt, hash } from "./src/bycryptHelper.ts";
+const kv = await Deno.openKv();
 
 const app = new Hono();
 
 const env = await load();
 
-const PORT = env["PORT"] || 3000;
-const JWT_SECRET = env["JWT_SECRET"] || "default_secret_key";
 app.use(cors());
-const key = await crypto.subtle.generateKey(
-  { name: "HMAC", hash: "SHA-512" },
-  true,
-  ["sign", "verify"],
-);
+async function checkExistence() {
+  const exists = await kv.get(["my-key"]);
+  if (
+    exists.key === null || exists.key === undefined ||
+    exists.value === null || exists.value === undefined ||
+    exists.value === ""
+  ) {
+    const key = await crypto.subtle.generateKey(
+      { name: "HMAC", hash: "SHA-512" },
+      true,
+      ["sign", "verify"],
+    );
+    const exp = await crypto.subtle.exportKey(
+      "raw",
+      key,
+    );
+
+    await kv.set(["my-key"], exp);
+    return key;
+  } else {
+    return exists.value;
+  }
+}
+
+const key = await checkExistence().then(async (key) => {
+  let result = await crypto.subtle.importKey(
+    "raw",
+    key,
+    { name: "HMAC", hash: "SHA-512" },
+    true,
+    ["sign", "verify"],
+  );
+  return result;
+}).then((key) => {
+  return key;
+});
+
 connectToDatabase();
+
 app.use("/api/*", async (c, next) => {
   const token = c.req.header("authorization");
   if (!token) {
@@ -93,10 +123,10 @@ app.post("/login", async (c) => {
 
     return c.json({ message: "Invalid password" });
   }
-
+  let exp = getNumericDate(60 * 60 * 24);
   const token = await create({ alg: "HS512", typ: "JWT" }, {
     user: { id: user._id, email: user.email },
-    exp: getNumericDate(60 * 60 * 24),
+    exp: exp,
   }, key);
   return c.json({ token });
 });
