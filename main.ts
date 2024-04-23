@@ -32,6 +32,7 @@ const app = new Hono();
 const env = await load();
 
 app.use(cors());
+await kv.delete(["my-key"]);
 async function checkExistence() {
   const exists = await kv.get(["my-key"]);
   if (
@@ -50,24 +51,31 @@ async function checkExistence() {
     );
 
     await kv.set(["my-key"], exp);
-    return key;
+    return exp;
   } else {
     return exists.value;
   }
 }
+async function getKey() {
+  try {
+    const key = await checkExistence();
+    const importedKey = await crypto.subtle.importKey(
+      "raw",
+      key,
+      { name: "HMAC", hash: "SHA-512" },
+      true,
+      ["sign", "verify"],
+    );
+    return importedKey;
+  } catch (error) {
+    // If an error occurs during importKey, delete the stored key
+    console.error("Error importing key:", error);
+    await kv.delete(["my-key"]);
+    throw new Error("Failed to import key, the key has been deleted.");
+  }
+}
 
-const key = await checkExistence().then(async (key) => {
-  let result = await crypto.subtle.importKey(
-    "raw",
-    key,
-    { name: "HMAC", hash: "SHA-512" },
-    true,
-    ["sign", "verify"],
-  );
-  return result;
-}).then((key) => {
-  return key;
-});
+const key = await getKey();
 
 connectToDatabase();
 
