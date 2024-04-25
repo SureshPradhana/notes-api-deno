@@ -2,8 +2,19 @@
 import { MongoClient, ObjectId } from "npm:mongodb";
 
 let db;
+let uri;
 
-const uri = Deno.env.get("MONGO_URI");
+export async function loadEnvFromDotenv() {
+  const { load } = await import("https://deno.land/std@0.221.0/dotenv/mod.ts");
+  const env = await load();
+  uri = env["MONGO_URI"];
+}
+
+if (Deno.args.includes("--local")) {
+  await loadEnvFromDotenv();
+} else {
+  uri = Deno.env.get("MONGO_URI");
+}
 
 async function connectToDatabase() {
   const client = new MongoClient(uri);
