@@ -1,10 +1,9 @@
 // models/User.js
 import { MongoClient, ObjectId } from "npm:mongodb";
 
-import { load } from "https://deno.land/std@0.221.0/dotenv/mod.ts";
 let db;
-const env = await load();
-const uri = env["MONGO_URI"] || "mongodb://localhost:27017";
+
+const uri = Deno.env.get("MONGO_URI");
 
 async function connectToDatabase() {
   const client = new MongoClient(uri);

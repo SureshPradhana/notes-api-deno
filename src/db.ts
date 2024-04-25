@@ -1,10 +1,8 @@
-import { load } from "https://deno.land/std@0.221.0/dotenv/mod.ts";
 import { MongoClient, ObjectId } from "npm:mongodb";
 
 const dbName = "notes";
 
-const env = await load();
-const uri = env["MONGO_URI"] || "mongodb://localhost:27017";
+const uri = Deno.env.get("MONGO_URI") || "mongodb://localhost:27017";
 
 const client = new MongoClient(uri);
 
