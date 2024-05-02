@@ -1,7 +1,6 @@
 import { Hono } from "https://deno.land/x/hono/mod.ts";
 import * as bcrypt from "https://deno.land/x/bcrypt/mod.ts";
 import { create, getNumericDate } from "https://deno.land/x/djwt/mod.ts";
-import { load } from "https://deno.land/std@0.221.0/dotenv/mod.ts";
 import { cors } from "https://deno.land/x/hono/middleware.ts";
 import { verify } from "https://deno.land/x/djwt/mod.ts";
 import {
@@ -28,8 +27,6 @@ import resetPassword from "./routes/resetPassword.ts";
 const kv = await Deno.openKv();
 
 const app = new Hono();
-
-const env = await load();
 
 app.use(cors());
 await kv.delete(["my-key"]);
@@ -112,8 +109,8 @@ app.route("/api/flashcards/bycards", bycards);
 app.route("/api/flashcards/bycard", bycard);
 app.route("/api/flashcards/bycardId", bycardId);
 
-app.route("/api/forgot-password", forgotPassword);
-app.route("/api/reset-password", resetPassword);
+app.route("/forgot-password", forgotPassword);
+app.route("/reset-password", resetPassword);
 
 // Redirect root URL
 
