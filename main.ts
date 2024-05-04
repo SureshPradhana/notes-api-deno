@@ -9,6 +9,8 @@ import {
   getUserByEmail,
 } from "./models/User.ts";
 
+import validate from "./routes/validate.ts";
+
 import notes from "./routes/notes.ts";
 import note from "./routes/note.ts";
 import bytag from "./routes/bytag.ts";
@@ -29,7 +31,6 @@ const kv = await Deno.openKv();
 const app = new Hono();
 
 app.use(cors());
-await kv.delete(["my-key"]);
 async function checkExistence() {
   const exists = await kv.get(["my-key"]);
   if (
@@ -93,7 +94,7 @@ app.use("/api/*", async (c, next) => {
   c.user = payload;
   await next();
 });
-
+app.route("/api/validate-token", validate);
 app.route("/api/notes", notes);
 app.route("/", note);
 app.route("/api/bytag", bytag);
